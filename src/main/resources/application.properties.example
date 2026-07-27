@@ -1,0 +1,6 @@
+spring.datasource.url=jdbc:postgresql://localhost:5432/ferreteria_db
+spring.datasource.username=postgres
+spring.datasource.password=TU_PASSWORD_AQUI
+spring.jpa.hibernate.ddl-auto=update
+jwt.secret=TU_CLAVE_SECRETA_BASE64_AQUI
+server.port=8080

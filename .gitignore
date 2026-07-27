@@ -1,0 +1,31 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Compilados
+*.class
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+
+# Claude Code (configuración local, no del proyecto)
+.claude/settings.local.json
+
+# Variables de entorno y credenciales
+application.properties
+application-local.properties
+.env
+
+.github/
+
+# Logs
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
