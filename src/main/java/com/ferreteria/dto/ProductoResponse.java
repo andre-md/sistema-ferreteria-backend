@@ -9,12 +9,14 @@ import java.time.LocalDateTime;
 public record ProductoResponse(
         Long id,
         String nombre,
+        Long categoriaId,
         String categoriaNombre,
         UnidadMedida unidadMedida,
         BigDecimal precioVenta,
         BigDecimal stockActual,
         Moneda moneda,
         boolean activo,
-        LocalDateTime fechaCreacion
+        LocalDateTime fechaCreacion,
+        String imagenUrl
 ) {
 }

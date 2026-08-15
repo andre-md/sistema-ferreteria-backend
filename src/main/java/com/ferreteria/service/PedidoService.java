@@ -8,6 +8,7 @@ import com.ferreteria.exception.PedidoNoEncontradoException;
 import com.ferreteria.exception.PedidoNoPagadoException;
 import com.ferreteria.exception.PedidoYaAsignadoException;
 import com.ferreteria.exception.PedidoYaCanceladoException;
+import com.ferreteria.exception.PedidoYaEntregadoException;
 import com.ferreteria.exception.PedidoYaPagadoException;
 import com.ferreteria.exception.ProductoNoEncontradoException;
 import com.ferreteria.exception.StockInsuficienteException;
@@ -17,6 +18,7 @@ import com.ferreteria.model.DetallePedido;
 import com.ferreteria.model.MovimientoInventario;
 import com.ferreteria.model.Pedido;
 import com.ferreteria.model.Producto;
+import com.ferreteria.model.SaldoCliente;
 import com.ferreteria.model.Usuario;
 import com.ferreteria.model.enums.EstadoEntrega;
 import com.ferreteria.model.enums.EstadoPago;
@@ -26,6 +28,7 @@ import com.ferreteria.model.enums.TipoMovimiento;
 import com.ferreteria.repository.MovimientoInventarioRepository;
 import com.ferreteria.repository.PedidoRepository;
 import com.ferreteria.repository.ProductoRepository;
+import com.ferreteria.repository.SaldoClienteRepository;
 import com.ferreteria.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -47,6 +50,8 @@ public class PedidoService {
     private final ProductoRepository productoRepository;
     private final UsuarioRepository usuarioRepository;
     private final MovimientoInventarioRepository movimientoInventarioRepository;
+    private final SaldoClienteRepository saldoClienteRepository;
+    private final SaldoClienteService saldoClienteService;
 
     @Transactional
     public PedidoResponse crear(PedidoRequest request, String emailUsuarioAutenticado) {
@@ -71,8 +76,43 @@ public class PedidoService {
 
         Usuario usuario = emailUsuarioAutenticado != null ? buscarUsuarioPorEmailOLanzar(emailUsuarioAutenticado) : null;
 
+        // montoTotal se calcula ANTES de aplicar el saldo a favor, porque el saldo
+        // aplicable esta topado por lo que realmente falta cubrir del pedido.
+        BigDecimal montoTotal = BigDecimal.ZERO;
+        for (DetallePedidoRequest detalleRequest : request.detalles()) {
+            Producto producto = productosPorId.get(detalleRequest.productoId());
+            montoTotal = montoTotal.add(redondear(detalleRequest.cantidad()).multiply(producto.getPrecioVenta()));
+        }
+        montoTotal = redondear(montoTotal);
+
         BigDecimal montoAdelanto = request.montoAdelanto() != null ? request.montoAdelanto() : BigDecimal.ZERO;
-        EstadoPago estadoPago = montoAdelanto.compareTo(BigDecimal.ZERO) > 0 ? EstadoPago.CON_ADELANTO : EstadoPago.PENDIENTE;
+
+        if (Boolean.TRUE.equals(request.usarSaldoAFavor())) {
+            BigDecimal saldoDisponible = saldoClienteRepository.findByClienteTelefono(request.clienteTelefono())
+                    .map(SaldoCliente::getMontoDisponible)
+                    .orElse(BigDecimal.ZERO);
+
+            BigDecimal maximoAplicable = montoTotal.subtract(montoAdelanto).max(BigDecimal.ZERO);
+            BigDecimal saldoAAplicar = saldoDisponible.min(maximoAplicable);
+
+            if (saldoAAplicar.compareTo(BigDecimal.ZERO) > 0) {
+                saldoClienteService.usarSaldo(request.clienteTelefono(), saldoAAplicar);
+                montoAdelanto = redondear(montoAdelanto.add(saldoAAplicar));
+            }
+        }
+
+        // Mismo patron de tope que actualizarPago(): el adelanto nunca queda registrado
+        // por encima de montoTotal; el excedente se asume vuelto entregado en efectivo
+        // por el vendedor, fuera del sistema.
+        EstadoPago estadoPago;
+        if (montoAdelanto.compareTo(montoTotal) >= 0) {
+            montoAdelanto = montoTotal;
+            estadoPago = EstadoPago.PAGADO;
+        } else if (montoAdelanto.compareTo(BigDecimal.ZERO) > 0) {
+            estadoPago = EstadoPago.CON_ADELANTO;
+        } else {
+            estadoPago = EstadoPago.PENDIENTE;
+        }
 
         Pedido pedido = Pedido.builder()
                 .clienteNombre(request.clienteNombre())
@@ -80,18 +120,15 @@ public class PedidoService {
                 .estadoPago(estadoPago)
                 .estadoEntrega(EstadoEntrega.PENDIENTE)
                 .montoAdelanto(montoAdelanto)
-                .montoTotal(BigDecimal.ZERO)
+                .montoTotal(montoTotal)
                 .usuario(usuario)
                 .build();
 
-        BigDecimal montoTotal = BigDecimal.ZERO;
         for (DetallePedidoRequest detalleRequest : request.detalles()) {
             Producto producto = productosPorId.get(detalleRequest.productoId());
             DetallePedido detalle = PedidoMapper.toDetalleEntity(detalleRequest, producto, pedido);
             pedido.getDetalles().add(detalle);
-            montoTotal = montoTotal.add(detalle.getCantidad().multiply(detalle.getPrecioUnitario()));
         }
-        pedido.setMontoTotal(redondear(montoTotal));
 
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
@@ -114,15 +151,15 @@ public class PedidoService {
     }
 
     public List<PedidoResponse> listarPorEstadoPago(EstadoPago estado) {
-        return PedidoMapper.toResponseList(pedidoRepository.findByEstadoPagoAndEstadoPedido(estado, EstadoPedido.ACTIVO));
+        return PedidoMapper.toResponseList(pedidoRepository.findByEstadoPagoAndEstadoPedidoOrderByFechaCreacionDesc(estado, EstadoPedido.ACTIVO));
     }
 
     public List<PedidoResponse> listarPorEstadoEntrega(EstadoEntrega estado) {
-        return PedidoMapper.toResponseList(pedidoRepository.findByEstadoEntregaAndEstadoPedido(estado, EstadoPedido.ACTIVO));
+        return PedidoMapper.toResponseList(pedidoRepository.findByEstadoEntregaAndEstadoPedidoOrderByFechaCreacionDesc(estado, EstadoPedido.ACTIVO));
     }
 
     public List<PedidoResponse> listarSinAtender() {
-        return PedidoMapper.toResponseList(pedidoRepository.findByUsuarioIsNullAndEstadoPedido(EstadoPedido.ACTIVO));
+        return PedidoMapper.toResponseList(pedidoRepository.findByUsuarioIsNullAndEstadoPedidoOrderByFechaCreacionDesc(EstadoPedido.ACTIVO));
     }
 
     // Vista de auditoria/historial: unico lugar donde SI se ven los cancelados
@@ -199,6 +236,10 @@ public class PedidoService {
         Pedido pedido = buscarPedidoOLanzar(id);
         lanzarSiEstaCancelado(pedido);
 
+        if (pedido.getEstadoEntrega() == EstadoEntrega.ENTREGADO) {
+            throw new PedidoYaEntregadoException("No se puede cancelar un pedido que ya fue entregado");
+        }
+
         Map<Long, Producto> productosPorId = new LinkedHashMap<>();
         Map<Long, BigDecimal> cantidadPorProducto = new LinkedHashMap<>();
 
@@ -217,6 +258,12 @@ public class PedidoService {
 
             registrarMovimiento(producto, TipoMovimiento.ENTRADA, cantidad,
                     "Cancelacion de pedido #" + pedido.getId(), null);
+        }
+
+        // El adelanto ya pagado no se devuelve en efectivo: queda como saldo a favor
+        // del cliente (identificado por telefono) para una compra futura.
+        if (pedido.getMontoAdelanto().compareTo(BigDecimal.ZERO) > 0) {
+            saldoClienteService.agregarSaldo(pedido.getClienteTelefono(), pedido.getClienteNombre(), pedido.getMontoAdelanto());
         }
 
         // No se borra el registro: se preserva el historial completo (montoAdelanto,

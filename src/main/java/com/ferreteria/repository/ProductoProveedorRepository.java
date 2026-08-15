@@ -10,9 +10,11 @@ import java.util.Optional;
 @Repository
 public interface ProductoProveedorRepository extends JpaRepository<ProductoProveedor, Long> {
 
-    List<ProductoProveedor> findByProductoId(Long productoId);
+    // Orden ascendente por precio: facilita comparar cotizaciones de un mismo producto
+    List<ProductoProveedor> findByProductoIdOrderByPrecioCostoAsc(Long productoId);
 
-    List<ProductoProveedor> findByProveedorId(Long proveedorId);
+    // Orden alfabetico por nombre de producto: listado legible para un proveedor
+    List<ProductoProveedor> findByProveedorIdOrderByProductoNombreAsc(Long proveedorId);
 
     boolean existsByProveedorId(Long proveedorId);
 

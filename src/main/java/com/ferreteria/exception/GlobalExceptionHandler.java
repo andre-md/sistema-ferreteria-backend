@@ -1,6 +1,7 @@
 package com.ferreteria.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -70,6 +71,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(ex.getMessage()));
     }
 
+    @ExceptionHandler(NoPuedeCambiarPropioRolException.class)
+    public ResponseEntity<ErrorResponse> handleNoPuedeCambiarPropioRol(NoPuedeCambiarPropioRolException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(ex.getMessage()));
+    }
+
+    @ExceptionHandler(NoPuedeCambiarPropioPasswordAquiException.class)
+    public ResponseEntity<ErrorResponse> handleNoPuedeCambiarPropioPasswordAqui(NoPuedeCambiarPropioPasswordAquiException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(ex.getMessage()));
+    }
+
     @ExceptionHandler(PasswordIncorrectoException.class)
     public ResponseEntity<ErrorResponse> handlePasswordIncorrecto(PasswordIncorrectoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(ex.getMessage()));
@@ -107,6 +118,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PedidoYaCanceladoException.class)
     public ResponseEntity<ErrorResponse> handlePedidoYaCancelado(PedidoYaCanceladoException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(ex.getMessage()));
+    }
+
+    @ExceptionHandler(PedidoYaEntregadoException.class)
+    public ResponseEntity<ErrorResponse> handlePedidoYaEntregado(PedidoYaEntregadoException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(ex.getMessage()));
+    }
+
+    @ExceptionHandler(SaldoClienteNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleSaldoClienteNoEncontrado(SaldoClienteNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.of(ex.getMessage()));
+    }
+
+    @ExceptionHandler(SaldoInsuficienteException.class)
+    public ResponseEntity<ErrorResponse> handleSaldoInsuficiente(SaldoInsuficienteException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(ex.getMessage()));
     }
 
@@ -165,6 +191,11 @@ public class GlobalExceptionHandler {
                 : "ninguno";
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(ErrorResponse.of("Metodo " + ex.getMethod() + " no soportado para esta ruta. Metodos permitidos: " + metodosPermitidos));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

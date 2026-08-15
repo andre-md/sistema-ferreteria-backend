@@ -17,6 +17,8 @@ public record PedidoRequest(
 
         BigDecimal montoAdelanto,
 
+        Boolean usarSaldoAFavor,
+
         @NotEmpty
         @Valid
         List<DetallePedidoRequest> detalles

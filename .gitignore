@@ -13,7 +13,7 @@ target/
 .project
 .classpath
 
-# Claude Code (configuración local, no del proyecto)
+# Claude Code 
 .claude/settings.local.json
 
 # Variables de entorno y credenciales

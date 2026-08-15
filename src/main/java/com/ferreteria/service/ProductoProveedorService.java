@@ -31,11 +31,11 @@ public class ProductoProveedorService {
     private final ProductoProveedorMapper productoProveedorMapper;
 
     public List<ProductoProveedorResponse> listarPorProducto(Long productoId) {
-        return productoProveedorMapper.toResponseList(productoProveedorRepository.findByProductoId(productoId));
+        return productoProveedorMapper.toResponseList(productoProveedorRepository.findByProductoIdOrderByPrecioCostoAsc(productoId));
     }
 
     public List<ProductoProveedorResponse> listarPorProveedor(Long proveedorId) {
-        return productoProveedorMapper.toResponseList(productoProveedorRepository.findByProveedorId(proveedorId));
+        return productoProveedorMapper.toResponseList(productoProveedorRepository.findByProveedorIdOrderByProductoNombreAsc(proveedorId));
     }
 
     @Transactional
@@ -68,7 +68,7 @@ public class ProductoProveedorService {
     }
 
     public ProductoProveedorResponse obtenerMasBarato(Long productoId) {
-        List<ProductoProveedor> cotizaciones = productoProveedorRepository.findByProductoId(productoId);
+        List<ProductoProveedor> cotizaciones = productoProveedorRepository.findByProductoIdOrderByPrecioCostoAsc(productoId);
 
         if (cotizaciones.isEmpty()) {
             throw new ProductoProveedorNoEncontradoException(

@@ -25,19 +25,28 @@ public class ProductoService {
     private final CategoriaRepository categoriaRepository;
 
     public List<ProductoResponse> listarActivos() {
-        return ProductoMapper.toResponseList(productoRepository.findByActivoTrue());
+        return ProductoMapper.toResponseList(productoRepository.findByActivoTrueOrderByNombreAsc());
     }
 
     public List<ProductoResponse> listarPorCategoria(Long categoriaId) {
-        return ProductoMapper.toResponseList(productoRepository.findByCategoriaIdAndActivoTrue(categoriaId));
+        return ProductoMapper.toResponseList(productoRepository.findByCategoriaIdAndActivoTrueOrderByNombreAsc(categoriaId));
     }
 
     public List<ProductoResponse> buscarPorNombre(String texto) {
-        return ProductoMapper.toResponseList(productoRepository.findByNombreContainingIgnoreCaseAndActivoTrue(texto));
+        return ProductoMapper.toResponseList(productoRepository.findByNombreContainingIgnoreCaseAndActivoTrueOrderByNombreAsc(texto));
     }
 
     public ProductoResponse obtenerPorId(Long id) {
         return ProductoMapper.toResponse(buscarProductoOLanzar(id));
+    }
+
+    // Para el catalogo publico: un producto inactivo debe verse igual que uno
+    // inexistente, sin distincion, ya que no deberia ser visible para el publico.
+    public ProductoResponse obtenerActivoPorId(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .filter(Producto::isActivo)
+                .orElseThrow(() -> new ProductoNoEncontradoException("Producto no encontrado con id: " + id));
+        return ProductoMapper.toResponse(producto);
     }
 
     @Transactional
@@ -63,7 +72,7 @@ public class ProductoService {
     }
 
     public List<ProductoResponse> listarStockBajo(BigDecimal umbral) {
-        return ProductoMapper.toResponseList(productoRepository.findByStockActualLessThanAndActivoTrue(umbral));
+        return ProductoMapper.toResponseList(productoRepository.findByStockActualLessThanAndActivoTrueOrderByNombreAsc(umbral));
     }
 
     private Producto buscarProductoOLanzar(Long id) {

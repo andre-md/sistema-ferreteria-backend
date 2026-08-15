@@ -24,7 +24,7 @@ public class ProveedorService {
     private final ProductoProveedorRepository productoProveedorRepository;
 
     public List<ProveedorResponse> listarTodos() {
-        return ProveedorMapper.toResponseList(proveedorRepository.findAll());
+        return ProveedorMapper.toResponseList(proveedorRepository.findAllByOrderByNombreAsc());
     }
 
     public ProveedorResponse obtenerPorId(Long id) {

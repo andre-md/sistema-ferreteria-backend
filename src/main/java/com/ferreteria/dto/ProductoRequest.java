@@ -28,6 +28,8 @@ public record ProductoRequest(
         BigDecimal stockActual,
 
         @NotNull
-        Moneda moneda
+        Moneda moneda,
+
+        String imagenUrl
 ) {
 }

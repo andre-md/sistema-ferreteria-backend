@@ -4,6 +4,8 @@ import com.ferreteria.dto.CambiarPasswordRequest;
 import com.ferreteria.dto.UsuarioRequest;
 import com.ferreteria.dto.UsuarioResponse;
 import com.ferreteria.exception.EmailDuplicadoException;
+import com.ferreteria.exception.NoPuedeCambiarPropioPasswordAquiException;
+import com.ferreteria.exception.NoPuedeCambiarPropioRolException;
 import com.ferreteria.exception.PasswordIncorrectoException;
 import com.ferreteria.exception.UsuarioNoEncontradoException;
 import com.ferreteria.mapper.UsuarioMapper;
@@ -28,7 +30,7 @@ public class UsuarioService {
 
     //Lista los usuarios activos 
     public List<UsuarioResponse> listarActivos() {
-        return UsuarioMapper.toResponseList(usuarioRepository.findByActivoTrue());
+        return UsuarioMapper.toResponseList(usuarioRepository.findByActivoTrueOrderByNombreAsc());
     }
 
     //Obtiene un usuario por su id, si no lo encuentra lanza una excepción
@@ -53,12 +55,24 @@ public class UsuarioService {
 
     //Actualizar un usuario existente, si la contraseña es vacia lanza excepción,
     @Transactional
-    public UsuarioResponse actualizar(Long id, UsuarioRequest request) {
+    public UsuarioResponse actualizar(Long id, UsuarioRequest request, String emailUsuarioAutenticado) {
         Usuario usuario = buscarUsuarioOLanzar(id);
 
         //Si el email cambia y ya le pertenece a OTRO usuario, se rechaza antes de tocar la base
         if (!usuario.getEmail().equalsIgnoreCase(request.email()) && usuarioRepository.existsByEmail(request.email())) {
             throw new EmailDuplicadoException("Ya existe un usuario con el email: " + request.email());
+        }
+
+        //Nadie puede cambiar su propio rol, ni siquiera un ADMIN editandose a si mismo
+        boolean esElMismoUsuario = usuario.getEmail().equalsIgnoreCase(emailUsuarioAutenticado);
+        if (esElMismoUsuario && request.rol() != usuario.getRol()) {
+            throw new NoPuedeCambiarPropioRolException("No puedes cambiar tu propio rol");
+        }
+
+        //El propio password no se cambia por aqui (no exige password actual); para eso esta cambiarPassword()
+        if (esElMismoUsuario && request.password() != null && !request.password().isBlank()) {
+            throw new NoPuedeCambiarPropioPasswordAquiException(
+                    "No puedes cambiar tu propia contrasena desde este endpoint; usa PUT /api/usuarios/{id}/password");
         }
 
         UsuarioMapper.actualizarEntity(usuario, request);

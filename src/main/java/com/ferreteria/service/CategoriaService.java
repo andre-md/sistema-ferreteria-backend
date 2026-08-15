@@ -24,7 +24,7 @@ public class CategoriaService {
     private final ProductoRepository productoRepository;
 
     public List<CategoriaResponse> listarTodas() {
-        return CategoriaMapper.toResponseList(categoriaRepository.findAll());
+        return CategoriaMapper.toResponseList(categoriaRepository.findAllByOrderByNombreAsc());
     }
 
     public CategoriaResponse obtenerPorId(Long id) {

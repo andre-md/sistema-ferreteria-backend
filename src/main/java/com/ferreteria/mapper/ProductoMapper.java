@@ -20,6 +20,7 @@ public final class ProductoMapper {
                 .precioVenta(request.precioVenta())
                 .stockActual(request.stockActual())
                 .moneda(request.moneda())
+                .imagenUrl(request.imagenUrl())
                 .build();
     }
 
@@ -30,19 +31,22 @@ public final class ProductoMapper {
         producto.setPrecioVenta(request.precioVenta());
         producto.setStockActual(request.stockActual());
         producto.setMoneda(request.moneda());
+        producto.setImagenUrl(request.imagenUrl());
     }
 
     public static ProductoResponse toResponse(Producto producto) {
         return new ProductoResponse(
                 producto.getId(),
                 producto.getNombre(),
+                producto.getCategoria().getId(),
                 producto.getCategoria().getNombre(),
                 producto.getUnidadMedida(),
                 producto.getPrecioVenta(),
                 producto.getStockActual(),
                 producto.getMoneda(),
                 producto.isActivo(),
-                producto.getFechaCreacion()
+                producto.getFechaCreacion(),
+                producto.getImagenUrl()
         );
     }
 

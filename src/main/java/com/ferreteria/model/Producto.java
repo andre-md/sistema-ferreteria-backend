@@ -76,6 +76,11 @@ public class Producto {
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
 
+    // Link a una imagen ya subida a un servicio externo (postimages.org, imgbb.com,
+    // etc.) - no hay subida de archivos propia, solo se guarda el texto de la URL.
+    @Column(name = "imagen_url", length = 500)
+    private String imagenUrl;
+
     @CreationTimestamp
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;

@@ -49,8 +49,8 @@ public class UsuarioController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UsuarioResponse actualizar(@PathVariable Long id, @Valid @RequestBody UsuarioRequest request) {
-        return usuarioService.actualizar(id, request);
+    public UsuarioResponse actualizar(@PathVariable Long id, @Valid @RequestBody UsuarioRequest request, Authentication authentication) {
+        return usuarioService.actualizar(id, request, authentication.getName());
     }
 
     @DeleteMapping("/{id}")

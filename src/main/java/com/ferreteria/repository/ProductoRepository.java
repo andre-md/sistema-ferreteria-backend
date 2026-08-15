@@ -11,16 +11,16 @@ import java.util.List;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    List<Producto> findByActivoTrue();
+    List<Producto> findByActivoTrueOrderByNombreAsc();
 
-    List<Producto> findByCategoriaIdAndActivoTrue(Long categoriaId);
+    List<Producto> findByCategoriaIdAndActivoTrueOrderByNombreAsc(Long categoriaId);
 
     boolean existsByCategoriaId(Long categoriaId);
 
-    List<Producto> findByNombreContainingIgnoreCaseAndActivoTrue(String nombre);
+    List<Producto> findByNombreContainingIgnoreCaseAndActivoTrueOrderByNombreAsc(String nombre);
 
     List<Producto> findByMoneda(Moneda moneda);
 
     // Para reporte de stock bajo
-    List<Producto> findByStockActualLessThanAndActivoTrue(BigDecimal umbral);
+    List<Producto> findByStockActualLessThanAndActivoTrueOrderByNombreAsc(BigDecimal umbral);
 }
