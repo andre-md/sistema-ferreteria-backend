@@ -2,9 +2,11 @@ package com.ferreteria.service;
 
 import com.ferreteria.dto.GananciaMensualResponse;
 import com.ferreteria.dto.MovimientoStockMensualResponse;
+import com.ferreteria.dto.PrecioProductoResponse;
 import com.ferreteria.dto.ProductoMasVendidoResponse;
 import com.ferreteria.dto.VentasMensualesResponse;
 import com.ferreteria.model.Pedido;
+import com.ferreteria.model.Producto;
 import com.ferreteria.model.ProductoProveedor;
 import com.ferreteria.model.TipoCambio;
 import com.ferreteria.model.enums.EstadoPago;
@@ -16,6 +18,7 @@ import com.ferreteria.repository.MovimientoInventarioRepository;
 import com.ferreteria.repository.MovimientoStockProjection;
 import com.ferreteria.repository.PedidoRepository;
 import com.ferreteria.repository.ProductoProveedorRepository;
+import com.ferreteria.repository.ProductoRepository;
 import com.ferreteria.repository.ProductoVentaProjection;
 import com.ferreteria.repository.TipoCambioRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +41,7 @@ public class ReporteService {
     private final DetallePedidoRepository detallePedidoRepository;
     private final MovimientoInventarioRepository movimientoInventarioRepository;
     private final ProductoProveedorRepository productoProveedorRepository;
+    private final ProductoRepository productoRepository;
     private final TipoCambioRepository tipoCambioRepository;
 
     public VentasMensualesResponse obtenerVentasMensuales(Integer mes, Integer anio) {
@@ -70,7 +74,45 @@ public class ReporteService {
 
     public GananciaMensualResponse calcularGananciaMensual(Integer mes, Integer anio) {
         LocalDateTime[] rango = calcularRangoMes(mes, anio);
-        List<ProductoVentaProjection> ventas = detallePedidoRepository.obtenerVentasPorProducto(EstadoPedido.ACTIVO, rango[0], rango[1]);
+        return calcularGanancia(rango[0], rango[1]);
+    }
+
+    public GananciaMensualResponse calcularGananciaDiaria() {
+        LocalDateTime[] rango = calcularRangoDia();
+        return calcularGanancia(rango[0], rango[1]);
+    }
+
+    public List<PrecioProductoResponse> obtenerPreciosProductos() {
+        List<Producto> productos = productoRepository.findByActivoTrueOrderByNombreAsc();
+        BigDecimal tipoCambio = tipoCambioRepository.findTopByOrderByFechaDesc().map(TipoCambio::getValor).orElse(null);
+
+        return productos.stream()
+                .map(producto -> {
+                    ProductoProveedor masBarato = productoProveedorRepository
+                            .findByProductoIdOrderByPrecioCostoAsc(producto.getId())
+                            .stream()
+                            .findFirst()
+                            .orElse(null);
+
+                    BigDecimal precioCompra = masBarato != null
+                            ? aSolesONull(masBarato.getPrecioCosto(), masBarato.getMoneda(), tipoCambio)
+                            : null;
+
+                    return new PrecioProductoResponse(
+                            producto.getId(),
+                            producto.getNombre(),
+                            producto.getPrecioVenta(),
+                            precioCompra != null ? redondear(precioCompra) : null);
+                })
+                .toList();
+    }
+
+    // Ganancia real: solo pedidos PAGADO (dinero efectivamente cobrado), no
+    // pedidos pendientes/con adelanto parcial. Compartida por la version mensual
+    // y la diaria - solo cambia el rango de fechas que reciben.
+    private GananciaMensualResponse calcularGanancia(LocalDateTime inicio, LocalDateTime fin) {
+        List<ProductoVentaProjection> ventas = detallePedidoRepository
+                .obtenerVentasPagadasPorProducto(EstadoPago.PAGADO, EstadoPedido.ACTIVO, inicio, fin);
 
         BigDecimal tipoCambio = tipoCambioRepository.findTopByOrderByFechaDesc().map(TipoCambio::getValor).orElse(null);
 
@@ -144,6 +186,13 @@ public class ReporteService {
         LocalDateTime inicio = mesConsultado.atDay(1).atStartOfDay();
         LocalDateTime fin = mesConsultado.plusMonths(1).atDay(1).atStartOfDay();
 
+        return new LocalDateTime[]{inicio, fin};
+    }
+
+    private LocalDateTime[] calcularRangoDia() {
+        LocalDate hoy = LocalDate.now();
+        LocalDateTime inicio = hoy.atStartOfDay();
+        LocalDateTime fin = hoy.plusDays(1).atStartOfDay();
         return new LocalDateTime[]{inicio, fin};
     }
 

@@ -2,6 +2,7 @@ package com.ferreteria.controller;
 
 import com.ferreteria.dto.GananciaMensualResponse;
 import com.ferreteria.dto.MovimientoStockMensualResponse;
+import com.ferreteria.dto.PrecioProductoResponse;
 import com.ferreteria.dto.ProductoMasVendidoResponse;
 import com.ferreteria.dto.VentasMensualesResponse;
 import com.ferreteria.service.ReporteService;
@@ -55,5 +56,18 @@ public class ReporteController {
             @RequestParam(required = false) Integer anio
     ) {
         return reporteService.obtenerMovimientosStockMensual(mes, anio);
+    }
+
+    // Solo ADMIN: expone precio de compra por producto, informacion comercial.
+    @GetMapping("/precios-productos")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<PrecioProductoResponse> preciosProductos() {
+        return reporteService.obtenerPreciosProductos();
+    }
+
+    @GetMapping("/ganancia-diaria")
+    @PreAuthorize("hasRole('ADMIN')")
+    public GananciaMensualResponse gananciaDiaria() {
+        return reporteService.calcularGananciaDiaria();
     }
 }
